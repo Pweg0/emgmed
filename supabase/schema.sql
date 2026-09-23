@@ -16,7 +16,8 @@ create table public.candidates (
   first_choice_program_id uuid not null references public.programs(id) on delete restrict,
   second_choice_program_id uuid not null references public.programs(id) on delete restrict,
   created_at timestamptz not null default now(),
-  check (first_choice_program_id <> second_choice_program_id)
+  check (first_choice_program_id <> second_choice_program_id),
+  unique (name, score, first_choice_program_id, second_choice_program_id)
 );
 
 create index candidates_first_choice_idx on public.candidates(first_choice_program_id);

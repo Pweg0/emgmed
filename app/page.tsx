@@ -61,6 +61,7 @@ export default function Home() {
   const [tab, setTab] = useState<"program" | "general">("program");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   async function load() {
     if (!supabase) { setMessage("Configure o Supabase para carregar a lista oficial de programas."); setLoading(false); return; }
@@ -88,13 +89,16 @@ export default function Home() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (submitting) return;
     setMessage("");
     const normalizedScore = Number(score.replace(",", "."));
     if (!name.trim() || !Number.isFinite(normalizedScore) || normalizedScore < 0 || !firstChoice || !secondChoice) return setMessage("Preencha todos os campos corretamente.");
     if (firstChoice === secondChoice) return setMessage("As duas opções precisam ser programas diferentes.");
     if (!supabase) return setMessage("Configure as variáveis do Supabase para publicar dados.");
+    setSubmitting(true);
     const { error } = await supabase.from("candidates").insert({ name: name.trim(), score: normalizedScore, first_choice_program_id: firstChoice, second_choice_program_id: secondChoice });
-    if (error) return setMessage("Não foi possível salvar. Tente novamente.");
+    setSubmitting(false);
+    if (error) return setMessage(error.code === "23505" ? "Este cadastro idêntico já está no ranking." : "Não foi possível salvar. Tente novamente.");
     setName(""); setScore(""); setFirstChoice(""); setSecondChoice(""); setMessage("Nota adicionada ao ranking.");
     await load();
   }
@@ -105,7 +109,7 @@ export default function Home() {
       <form onSubmit={submit} className="mt-5 space-y-4"><div className="grid gap-4 sm:grid-cols-2"><div><label className="mb-1.5 block text-sm font-medium">Nome</label><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} className="w-full rounded-lg border px-3 py-2.5 outline-none ring-emerald-600 focus:ring-2" placeholder="Seu nome" /></div><div><label className="mb-1.5 block text-sm font-medium">Pontuação/nota</label><input value={score} onChange={(event) => setScore(event.target.value)} inputMode="decimal" className="w-full rounded-lg border px-3 py-2.5 outline-none ring-emerald-600 focus:ring-2" placeholder="Ex.: 92,5" /></div></div>
         <ProgramSelect label="1ª opção" programs={programs} value={firstChoice} onChange={setFirstChoice} disabledId={secondChoice} unavailableMessage="A lista não carregou. Configure as variáveis do Supabase e execute o schema e o seed." />
         <ProgramSelect label="2ª opção" programs={programs} value={secondChoice} onChange={setSecondChoice} disabledId={firstChoice} unavailableMessage="A lista não carregou. Configure as variáveis do Supabase e execute o schema e o seed." />
-        <button disabled={loading} className="w-full rounded-lg bg-emerald-700 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-60">Adicionar ao ranking</button>{message && <p role="status" className="text-sm text-emerald-800">{message}</p>}
+        <button disabled={loading || submitting} className="w-full rounded-lg bg-emerald-700 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-60">{submitting ? "Adicionando…" : "Adicionar ao ranking"}</button>{message && <p role="status" className="text-sm text-emerald-800">{message}</p>}
       </form></section>
     <section className="mt-7"><div className="mb-4 flex rounded-lg bg-emerald-50 p-1"><button onClick={() => setTab("program")} className={`flex-1 rounded-md px-3 py-2 text-sm font-medium ${tab === "program" ? "bg-white text-emerald-800 shadow-sm" : "text-slate-600"}`}>Ranking por programa</button><button onClick={() => setTab("general")} className={`flex-1 rounded-md px-3 py-2 text-sm font-medium ${tab === "general" ? "bg-white text-emerald-800 shadow-sm" : "text-slate-600"}`}>Ranking geral</button></div>
       {tab === "program" ? <div className="rounded-xl border bg-white p-4 shadow-sm sm:p-6"><label className="mb-1.5 block text-sm font-medium">Ver ranking de:</label><select value={selectedProgram} onChange={(event) => setSelectedProgram(event.target.value)} className="w-full rounded-lg border bg-white px-3 py-2.5 text-sm outline-none ring-emerald-600 focus:ring-2">{programs.map((program) => <option value={program.id} key={program.id}>{programLabel(program)} ({program.city})</option>)}</select><p className="mt-4 text-sm text-slate-600"><strong>{programRows.length}</strong> candidatos escolheram este programa <span className="text-slate-400">·</span> {firstCount} como 1ª opção <span className="text-slate-400">·</span> {programRows.length - firstCount} como 2ª opção</p><RankingList rows={programRows} selectedProgram={selectedProgram} /></div> : <div className="overflow-hidden rounded-xl border bg-white shadow-sm"><div className="border-b px-4 py-4 sm:px-6"><h2 className="font-semibold">Ranking geral</h2></div><div className="overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="px-4 py-3">Posição</th><th className="px-4 py-3">Nome</th><th className="px-4 py-3">Nota</th><th className="px-4 py-3">1ª opção</th><th className="px-4 py-3">2ª opção</th></tr></thead><tbody>{generalRows.map((candidate) => <tr key={candidate.id} className="border-t"><td className="px-4 py-3 font-semibold">{candidate.rank}º</td><td className="px-4 py-3">{candidate.name}</td><td className="px-4 py-3">{scoreLabel(candidate.score)}</td><td className="px-4 py-3">{programLabel(candidate.first_program)}</td><td className="px-4 py-3">{programLabel(candidate.second_program)}</td></tr>)}</tbody></table>{!generalRows.length && <Empty />}</div></div>}
