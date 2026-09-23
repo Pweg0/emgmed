@@ -23,8 +23,8 @@ function rankRows(rows: CandidateWithPrograms[]) {
   });
 }
 
-function ProgramSelect({ label, programs, value, onChange, disabledId }: {
-  label: string; programs: Program[]; value: string; onChange: (id: string) => void; disabledId?: string;
+function ProgramSelect({ label, programs, value, onChange, disabledId, unavailableMessage }: {
+  label: string; programs: Program[]; value: string; onChange: (id: string) => void; disabledId?: string; unavailableMessage?: string;
 }) {
   const [query, setQuery] = useState("");
   const selected = programs.find((program) => program.id === value);
@@ -38,7 +38,7 @@ function ProgramSelect({ label, programs, value, onChange, disabledId }: {
       placeholder="Pesquisar programa ou cidade" autoComplete="off"
       className="w-full rounded-lg border bg-white px-3 py-2.5 outline-none ring-emerald-600 transition focus:ring-2" />
     {!selected && <div className="mt-1 max-h-44 overflow-y-auto rounded-lg border bg-white shadow-sm">
-      {matches.length ? matches.map((program) => <button type="button" key={program.id} onClick={() => { onChange(program.id); setQuery(""); }} className="block w-full px-3 py-2 text-left text-sm hover:bg-emerald-50">
+      {programs.length === 0 ? <p className="px-3 py-2 text-sm text-amber-800">{unavailableMessage ?? "A lista de programas ainda não foi carregada."}</p> : matches.length ? matches.map((program) => <button type="button" key={program.id} onClick={() => { onChange(program.id); setQuery(""); }} className="block w-full px-3 py-2 text-left text-sm hover:bg-emerald-50">
         <span className="font-medium">{programLabel(program)}</span><span className="ml-1 text-slate-500">({program.city})</span>
       </button>) : <p className="px-3 py-2 text-sm text-slate-500">Nenhum programa encontrado.</p>}
     </div>}
@@ -58,7 +58,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   async function load() {
-    if (!supabase) { setLoading(false); return; }
+    if (!supabase) { setMessage("Configure o Supabase para carregar a lista oficial de programas."); setLoading(false); return; }
     const [programsResult, candidatesResult] = await Promise.all([
       supabase.from("programs").select("id,institution_name,practice_scenario,city,state").order("state").order("practice_scenario"),
       supabase.from("candidates").select("id,name,score,first_choice_program_id,second_choice_program_id,created_at").order("score", { ascending: false }).order("created_at"),
@@ -98,8 +98,8 @@ export default function Home() {
     <header className="mb-7 border-l-4 border-emerald-600 pl-4"><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Ranking Colaborativo — Medicina de Emergência</h1><p className="mt-2 text-sm leading-6 text-slate-600">Adicione sua nota e suas duas opções para acompanhar uma estimativa de classificação entre os participantes do grupo.</p><p className="mt-3 text-xs text-slate-500">Ranking não oficial. Considera apenas os candidatos que adicionaram seus dados.</p></header>
     <section className="rounded-xl border bg-white p-4 shadow-sm sm:p-6"><h2 className="text-lg font-semibold">Adicionar ao ranking</h2><p className="mt-1 text-xs text-slate-500">Os dados inseridos ficarão visíveis para os demais participantes.</p>
       <form onSubmit={submit} className="mt-5 space-y-4"><div className="grid gap-4 sm:grid-cols-2"><div><label className="mb-1.5 block text-sm font-medium">Nome</label><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} className="w-full rounded-lg border px-3 py-2.5 outline-none ring-emerald-600 focus:ring-2" placeholder="Seu nome" /></div><div><label className="mb-1.5 block text-sm font-medium">Pontuação/nota</label><input value={score} onChange={(event) => setScore(event.target.value)} inputMode="decimal" className="w-full rounded-lg border px-3 py-2.5 outline-none ring-emerald-600 focus:ring-2" placeholder="Ex.: 92,5" /></div></div>
-        <ProgramSelect label="1ª opção" programs={programs} value={firstChoice} onChange={setFirstChoice} disabledId={secondChoice} />
-        <ProgramSelect label="2ª opção" programs={programs} value={secondChoice} onChange={setSecondChoice} disabledId={firstChoice} />
+        <ProgramSelect label="1ª opção" programs={programs} value={firstChoice} onChange={setFirstChoice} disabledId={secondChoice} unavailableMessage="A lista não carregou. Configure as variáveis do Supabase e execute o schema e o seed." />
+        <ProgramSelect label="2ª opção" programs={programs} value={secondChoice} onChange={setSecondChoice} disabledId={firstChoice} unavailableMessage="A lista não carregou. Configure as variáveis do Supabase e execute o schema e o seed." />
         <button disabled={loading} className="w-full rounded-lg bg-emerald-700 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-60">Adicionar ao ranking</button>{message && <p role="status" className="text-sm text-emerald-800">{message}</p>}
       </form></section>
     <section className="mt-7"><div className="mb-4 flex rounded-lg bg-emerald-50 p-1"><button onClick={() => setTab("program")} className={`flex-1 rounded-md px-3 py-2 text-sm font-medium ${tab === "program" ? "bg-white text-emerald-800 shadow-sm" : "text-slate-600"}`}>Ranking por programa</button><button onClick={() => setTab("general")} className={`flex-1 rounded-md px-3 py-2 text-sm font-medium ${tab === "general" ? "bg-white text-emerald-800 shadow-sm" : "text-slate-600"}`}>Ranking geral</button></div>
