@@ -6,3 +6,4 @@ node_modules.incomplete/
 enare.html
 vagas.json
 npm-debug.log*
+tsconfig.tsbuildinfo
