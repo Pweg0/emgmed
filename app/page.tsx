@@ -5,7 +5,12 @@ import { supabase } from "@/lib/supabase";
 import type { Candidate, CandidateWithPrograms, Program } from "@/lib/types";
 
 function programLabel(program: Program) {
-  const name = program.practice_scenario || program.institution_name;
+  // Alguns registros oficiais usam um cenário geográfico genérico (por exemplo,
+  // "Município de Fortaleza/CE"). Nesses casos, o nome da instituição é mais útil.
+  const isGenericLocation = /^município de /i.test(program.practice_scenario.trim());
+  const name = !program.practice_scenario || isGenericLocation
+    ? program.institution_name
+    : program.practice_scenario;
   return `${name} — ${program.state}`;
 }
 
