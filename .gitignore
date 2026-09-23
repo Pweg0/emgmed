@@ -1,0 +1,8 @@
+node_modules/
+node_modules.incomplete/
+.next/
+.env.local
+.env*.local
+enare.html
+vagas.json
+npm-debug.log*
